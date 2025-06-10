@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Controle de Ferramentas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="p-4 bg-light">
+    <div class="container">
+        <h1 class="mb-4">Controle de Ferramentas</h1>
+
+        <!-- Formulário para adicionar -->
+        <form method="POST" action="/adicionar" class="row g-2 mb-4">
+            <div class="col-md-3">
+                <input name="nome" class="form-control" placeholder="Nome da ferramenta" required>
+            </div>
+            <div class="col-md-2">
+                <select name="status" class="form-select" required>
+                    <option value="em estoque">Em Estoque</option>
+                    <option value="em uso">Em Uso</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <input name="local" class="form-control" placeholder="Local ou projeto" required>
+            </div>
+            <div class="col-md-2">
+                <input name="tecnico" class="form-control" placeholder="Nome do técnico">
+            </div>
+            <div class="col-md-1">
+                <input name="quantidade" type="number" class="form-control" placeholder="Qtd" min="1" required>
+            </div>
+            <div class="col-md-1">
+                <button class="btn btn-primary w-100">Adicionar</button>
+            </div>
+        </form>
+
+        <!-- Contadores -->
+        <div class="alert alert-info">
+            <strong>Total:</strong> {{ total }} |
+            <strong>Em Uso:</strong> {{ em_uso }} |
+            <strong>Em Estoque:</strong> {{ em_estoque }}
+        </div>
+
+        <!-- Lista de ferramentas em estoque -->
+        <h4 class="mt-4">🔹 Ferramentas em Estoque</h4>
+        <table class="table table-bordered table-hover">
+            <thead class="table-success">
+                <tr>
+                    <th>ID</th>
+                    <th>Nome</th>
+                    <th>Qtd</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ferramenta in ferramentas_estoque %}
+                <tr>
+                    <td>{{ ferramenta.id }}</td>
+                    <td>{{ ferramenta.nome }}</td>
+                    <td>{{ ferramenta.quantidade }}</td>
+                    <td>
+                        <a href="/deletar/{{ ferramenta.id }}" class="btn btn-danger btn-sm">Excluir</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Lista de ferramentas em uso -->
+        <h4 class="mt-5">🔸 Ferramentas em Uso</h4>
+        <table class="table table-bordered table-hover">
+            <thead class="table-warning">
+                <tr>
+                    <th>ID</th>
+                    <th>Nome</th>
+                    <th>Qtd</th>
+                    <th>Projeto</th>
+                    <th>Técnico</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ferramenta in ferramentas_uso %}
+                <tr>
+                    <td>{{ ferramenta.id }}</td>
+                    <td>{{ ferramenta.nome }}</td>
+                    <td>{{ ferramenta.quantidade }}</td>
+                    <td>{{ ferramenta.local }}</td>
+                    <td>{{ ferramenta.tecnico or '-' }}</td>
+                    <td>
+                        <a href="/devolver/{{ ferramenta.id }}" class="btn btn-success btn-sm">Devolver</a>
+                        <a href="/deletar/{{ ferramenta.id }}" class="btn btn-danger btn-sm">Excluir</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
