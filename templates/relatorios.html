@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
@@ -7,17 +7,31 @@
 </head>
 <body class="bg-light p-4">
     <div class="container">
-        <h2 class="mb-4">📊 Relatórios de Ferramentas</h2>
-        <a href="/relatorio_estoque" class="btn btn-outline-success mb-3">📦 Ver Relatório de Estoque</a>
-        <a href="/exportar_excel_projetos" class="btn btn-outline-success mb-3">📦 Exportar Projetos para Excel</a>
+        <h2 class="mb-4">📊 Relatórios de Ferramentas em Uso</h2>
+
+        <!-- Botões de navegação -->
+        <div class="mb-3 d-flex justify-content-between flex-wrap">
+            <div>
+                <a href="/" class="btn btn-secondary me-2 mb-2">🏠 Voltar para Início</a>
+                <a href="/relatorio_estoque" class="btn btn-outline-success mb-2">📦 Ver Relatório de Estoque</a>
+            </div>
+            <div>
+                <form method="get" action="/exportar_excel" class="d-inline">
+                    <input type="hidden" name="ferramenta" value="{{ request.args.get('ferramenta', '') }}">
+                    <input type="hidden" name="tecnico" value="{{ request.args.get('tecnico', '') }}">
+                    <input type="hidden" name="projeto" value="{{ request.args.get('projeto', '') }}">
+                    <button type="submit" class="btn btn-outline-primary mb-2">🔽 Exportar filtro atual para Excel</button>
+                </form>
+            </div>
+        </div>
 
         <!-- Formulário de Filtro -->
-        <form method="POST" class="row g-2 mb-4">
+        <form method="GET" class="row g-2 mb-4">
             <div class="col-md-4">
-                <select name="nome" class="form-select">
+                <select name="ferramenta" class="form-select">
                     <option value="">-- Filtrar por Ferramenta --</option>
                     {% for nome in nomes_ferramentas %}
-                        <option value="{{ nome }}">{{ nome }}</option>
+                        <option value="{{ nome }}" {% if request.args.get('ferramenta') == nome %}selected{% endif %}>{{ nome }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -25,23 +39,20 @@
                 <select name="tecnico" class="form-select">
                     <option value="">-- Filtrar por Técnico --</option>
                     {% for tecnico in tecnicos %}
-                        <option value="{{ tecnico }}">{{ tecnico }}</option>
+                        <option value="{{ tecnico }}" {% if request.args.get('tecnico') == tecnico %}selected{% endif %}>{{ tecnico }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="col-md-4">
-                <select name="local" class="form-select">
+                <select name="projeto" class="form-select">
                     <option value="">-- Filtrar por Projeto --</option>
                     {% for projeto in locais %}
-                        <option value="{{ projeto }}">{{ projeto }}</option>
+                        <option value="{{ projeto }}" {% if request.args.get('projeto') == projeto %}selected{% endif %}>{{ projeto }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-2 mt-2">
-                <button class="btn btn-primary w-100">Filtrar</button>
-            </div>
-            <div class="col-md-2 mt-2">
-                <a href="/" class="btn btn-secondary w-100">Voltar</a>
+            <div class="col-md-3">
+                <button class="btn btn-primary w-100">🔍 Filtrar</button>
             </div>
         </form>
 
@@ -51,7 +62,7 @@
             <thead class="table-info">
                 <tr>
                     <th>Nome</th>
-                    <th>Qtd</th>
+                    <th>Quantidade</th>
                     <th>Status</th>
                     <th>Projeto</th>
                     <th>Técnico</th>
@@ -71,19 +82,9 @@
                 {% endfor %}
             </tbody>
         </table>
-        <form method="get" action="/exportar_excel" class="mt-3">
-    <input type="hidden" name="ferramenta" value="{{ request.args.get('ferramenta', '') }}">
-    <input type="hidden" name="tecnico" value="{{ request.args.get('tecnico', '') }}">
-    <input type="hidden" name="projeto" value="{{ request.args.get('projeto', '') }}">
-    <button type="submit" class="btn btn-outline-primary">🔽 Exportar filtro atual para Excel</button>
-</form>
-
-        {% elif request.method == 'POST' %}
-            <div class="alert alert-warning">Nenhum resultado encontrado.</div>
+        {% else %}
+            <div class="alert alert-warning">Nenhum resultado encontrado para o filtro atual.</div>
         {% endif %}
     </div>
 </body>
 </html>
-
-
-
