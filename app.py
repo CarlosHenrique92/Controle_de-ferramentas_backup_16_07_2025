@@ -218,9 +218,9 @@ if __name__ == '__main__':
     print("Iniciando o servidor Flask...")
     app.run(debug=True)
 
-#  git add .
-#  git commit -m "Planilha de estoque salvo"
-#  git push
+ git add .
+ git commit -m "Planilha de estoque salvo"
+ git push
 
 
 
