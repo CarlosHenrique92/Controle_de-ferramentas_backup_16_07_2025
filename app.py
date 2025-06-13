@@ -219,5 +219,8 @@ if __name__ == '__main__':
     app.run(debug=True)
 
 #  git add .
-#  git commit -m "Atualização do relatório finalizada"
+#  git commit -m "Planilha de estoque salvo"
 #  git push
+
+
+
