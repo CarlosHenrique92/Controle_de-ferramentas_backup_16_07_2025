@@ -196,5 +196,5 @@ if __name__ == '__main__':
     app.run(debug=True)
 
 # git add .
-# git commit -m "Atualização do botão de exportar"
+# git commit -m "Atualizamos aceitar zero unidades e deixar em vermelho"
 # git push
