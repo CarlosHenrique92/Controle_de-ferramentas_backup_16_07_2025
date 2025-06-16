@@ -11,11 +11,15 @@ def get_db_connection():
 
 @app.route('/')
 def index():
-    conn = get_db_connection()
-    ferramentas_estoque = conn.execute('SELECT * FROM ferramentas WHERE status = "estoque"').fetchall()
-    ferramentas_uso = conn.execute('SELECT * FROM ferramentas WHERE status = "uso"').fetchall()
-    conn.close()
-    return render_template('index.html', ferramentas_estoque=ferramentas_estoque, ferramentas_uso=ferramentas_uso)
+    try:
+        conn = get_db_connection()
+        ferramentas_estoque = conn.execute('SELECT * FROM ferramentas WHERE status = "estoque"').fetchall()
+        ferramentas_uso = conn.execute('SELECT * FROM ferramentas WHERE status = "uso"').fetchall()
+        conn.close()
+        return render_template('index.html', ferramentas_estoque=ferramentas_estoque, ferramentas_uso=ferramentas_uso)
+    except sqlite3.OperationalError as e:
+        erro = str(e)
+        return render_template('index.html', ferramentas_estoque=[], ferramentas_uso=[], erro=erro)
 
 @app.route('/adicionar', methods=['POST'])
 def adicionar():
@@ -27,25 +31,54 @@ def adicionar():
     idgeo = request.form['idgeo']
 
     conn = get_db_connection()
-    existente = conn.execute('''
-        SELECT * FROM ferramentas
-        WHERE nome = ? AND status = ? AND local = ? AND tecnico = ? AND idgeo = ?
-    ''', (nome, status, local, tecnico, idgeo)).fetchone()
+
+    existente = conn.execute('SELECT * FROM ferramentas WHERE nome = ? AND status = ?', (nome, status)).fetchone()
 
     if existente:
         nova_qtd = existente['quantidade'] + quantidade
-        conn.execute('''
-            UPDATE ferramentas SET quantidade = ? WHERE id = ?
-        ''', (nova_qtd, existente['id']))
+        conn.execute('UPDATE ferramentas SET quantidade = ? WHERE id = ?', (nova_qtd, existente['id']))
     else:
-        conn.execute('''
-            INSERT INTO ferramentas (nome, status, local, tecnico, quantidade, idgeo)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (nome, status, local, tecnico, quantidade, idgeo))
+        conn.execute(
+            'INSERT INTO ferramentas (nome, status, local, tecnico, quantidade, idgeo) VALUES (?, ?, ?, ?, ?, ?)',
+            (nome, status, local, tecnico, quantidade, idgeo)
+        )
+
+    if status == 'uso':
+        ferramenta_estoque = conn.execute('SELECT * FROM ferramentas WHERE nome = ? AND status = "estoque"', (nome,)).fetchone()
+        if ferramenta_estoque:
+            nova_qtd_estoque = ferramenta_estoque['quantidade'] - quantidade
+            if nova_qtd_estoque <= 0:
+                conn.execute('DELETE FROM ferramentas WHERE id = ?', (ferramenta_estoque['id'],))
+            else:
+                conn.execute('UPDATE ferramentas SET quantidade = ? WHERE id = ?', (nova_qtd_estoque, ferramenta_estoque['id']))
 
     conn.commit()
     conn.close()
     return redirect('/')
+
+@app.route('/editar/<int:id>', methods=['GET', 'POST'])
+def editar(id):
+    conn = get_db_connection()
+    ferramenta = conn.execute('SELECT * FROM ferramentas WHERE id = ?', (id,)).fetchone()
+
+    if request.method == 'POST':
+        nome = request.form['nome']
+        status = request.form['status']
+        local = request.form['local']
+        tecnico = request.form['tecnico']
+        quantidade = int(request.form['quantidade'])
+        idgeo = request.form['idgeo']
+
+        conn.execute(
+            'UPDATE ferramentas SET nome = ?, status = ?, local = ?, tecnico = ?, quantidade = ?, idgeo = ? WHERE id = ?',
+            (nome, status, local, tecnico, quantidade, idgeo, id)
+        )
+        conn.commit()
+        conn.close()
+        return redirect('/')
+
+    conn.close()
+    return render_template('editar.html', ferramenta=ferramenta)
 
 @app.route('/deletar/<int:id>')
 def deletar(id):
@@ -57,54 +90,21 @@ def deletar(id):
 
 @app.route('/devolver/<int:id>')
 def devolver(id):
-    conn = sqlite3.connect('ferramentas.db')
-    cursor = conn.cursor()
+    conn = get_db_connection()
+    ferramenta = conn.execute('SELECT * FROM ferramentas WHERE id = ?', (id,)).fetchone()
 
-    cursor.execute("SELECT nome, quantidade FROM ferramentas WHERE id = ? AND status = 'uso'", (id,))
-    ferramenta_em_uso = cursor.fetchone()
-
-    if ferramenta_em_uso:
-        nome, quantidade = ferramenta_em_uso
-        cursor.execute("SELECT id, quantidade FROM ferramentas WHERE nome = ? AND status = 'estoque'", (nome,))
-        ferramenta_estoque = cursor.fetchone()
-
-        if ferramenta_estoque:
-            estoque_id, estoque_quantidade = ferramenta_estoque
-            nova_quantidade = estoque_quantidade + quantidade
-            cursor.execute("UPDATE ferramentas SET quantidade = ? WHERE id = ?", (nova_quantidade, estoque_id))
+    if ferramenta:
+        existente = conn.execute('SELECT * FROM ferramentas WHERE nome = ? AND status = "estoque"', (ferramenta['nome'],)).fetchone()
+        if existente:
+            nova_qtd = existente['quantidade'] + ferramenta['quantidade']
+            conn.execute('UPDATE ferramentas SET quantidade = ? WHERE id = ?', (nova_qtd, existente['id']))
+            conn.execute('DELETE FROM ferramentas WHERE id = ?', (ferramenta['id'],))
         else:
-            cursor.execute("""
-                INSERT INTO ferramentas (nome, quantidade, status, local, tecnico, idgeo)
-                VALUES (?, ?, 'estoque', '', '', '')
-            """, (nome, quantidade))
-
-        cursor.execute("DELETE FROM ferramentas WHERE id = ?", (id,))
+            conn.execute('UPDATE ferramentas SET status = "estoque", local = "", tecnico = "", idgeo = "" WHERE id = ?', (ferramenta['id'],))
 
     conn.commit()
     conn.close()
     return redirect('/')
-
-@app.route('/editar/<int:id>', methods=['GET', 'POST'])
-def editar(id):
-    conn = get_db_connection()
-    if request.method == 'POST':
-        nova_quantidade = int(request.form['quantidade'])
-        novo_local = request.form['local']
-        novo_tecnico = request.form['tecnico']
-        novo_idgeo = request.form['idgeo']
-
-        conn.execute('''
-            UPDATE ferramentas
-            SET quantidade = ?, local = ?, tecnico = ?, idgeo = ?
-            WHERE id = ?
-        ''', (nova_quantidade, novo_local, novo_tecnico, novo_idgeo, id))
-        conn.commit()
-        conn.close()
-        return redirect('/')
-
-    ferramenta = conn.execute('SELECT * FROM ferramentas WHERE id = ?', (id,)).fetchone()
-    conn.close()
-    return render_template('editar.html', ferramenta=ferramenta)
 
 @app.route('/relatorios', methods=['GET'])
 def relatorios():
@@ -147,51 +147,28 @@ def relatorios():
         locais=locais
     )
 
-
-@app.route('/relatorio_estoque')
+@app.route('/relatorio_estoque', methods=['GET', 'POST'])
 def relatorio_estoque():
     conn = get_db_connection()
-    ferramentas_estoque = conn.execute("SELECT nome, quantidade FROM ferramentas WHERE status = 'estoque'").fetchall()
-    conn.close()
-    return render_template('relatorio_estoque.html', ferramentas=ferramentas_estoque)
 
-@app.route('/exportar_excel')
-def exportar_excel():
-    ferramenta = request.args.get('ferramenta', '')
-    tecnico = request.args.get('tecnico', '')
-    projeto = request.args.get('projeto', '')
+    nome_filtro = ''
+    if request.method == 'POST':
+        nome_filtro = request.form.get('nome', '').lower()
+        query = "SELECT nome, quantidade FROM ferramentas WHERE status = 'estoque'"
+        params = []
 
-    query = "SELECT nome, quantidade, local, tecnico, idgeo FROM ferramentas WHERE status = 'uso'"
-    params = []
+        if nome_filtro:
+            query += " AND LOWER(nome) LIKE ?"
+            params.append(f"%{nome_filtro}%")
 
-    if ferramenta:
-        query += " AND LOWER(nome) LIKE ?"
-        params.append(f"%{ferramenta.lower()}%")
-    if tecnico:
-        query += " AND LOWER(tecnico) LIKE ?"
-        params.append(f"%{tecnico.lower()}%")
-    if projeto:
-        query += " AND LOWER(local) LIKE ?"
-        params.append(f"%{projeto.lower()}%")
+        ferramentas_estoque = conn.execute(query, params).fetchall()
+    else:
+        ferramentas_estoque = conn.execute("SELECT nome, quantidade FROM ferramentas WHERE status = 'estoque'").fetchall()
 
-    conn = sqlite3.connect('ferramentas.db')
-    cursor = conn.cursor()
-    cursor.execute(query, params)
-    dados = cursor.fetchall()
+    nomes = [row['nome'] for row in conn.execute("SELECT DISTINCT nome FROM ferramentas WHERE status = 'estoque'")]
     conn.close()
 
-    if not dados:
-        return "Nenhum dado encontrado para exportar."
-
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.append(["Nome", "Quantidade", "Projeto", "Técnico", "IDGEO"])
-    for linha in dados:
-        ws.append(linha)
-
-    arquivo = "relatorio_projetos.xlsx"
-    wb.save(arquivo)
-    return send_file(arquivo, as_attachment=True)
+    return render_template('relatorio_estoque.html', ferramentas_estoque=ferramentas_estoque, nomes=nomes)
 
 @app.route('/exportar_estoque_excel')
 def exportar_estoque_excel():
@@ -206,21 +183,18 @@ def exportar_estoque_excel():
 
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.append(["Nome", "Quantidade"])
+    ws.append(["Nome da Ferramenta", "Quantidade"])
     for linha in dados:
         ws.append(linha)
 
-    arquivo = "relatorio_estoque.xlsx"
-    wb.save(arquivo)
-    return send_file(arquivo, as_attachment=True)
+    nome_arquivo = "relatorio_estoque.xlsx"
+    wb.save(nome_arquivo)
+
+    return send_file(nome_arquivo, as_attachment=True)
 
 if __name__ == '__main__':
-    print("Iniciando o servidor Flask...")
     app.run(debug=True)
 
- git add .
- git commit -m "Planilha de estoque salvo"
- git push
-
-
-
+# git add .
+# git commit -m "Atualização do botão de exportar"
+# git push

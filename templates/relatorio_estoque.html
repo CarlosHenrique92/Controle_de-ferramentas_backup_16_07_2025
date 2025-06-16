@@ -7,29 +7,37 @@
 </head>
 <body class="bg-light p-4">
 <div class="container">
-    <h2 class="mb-4">📦 Relatório de Ferramentas em Estoque</h2>
-    <a href="/relatorios" class="btn btn-secondary mt-3">🔙 Voltar para Relatórios</a>
+    <h2 class="mb-4">📦 Relatório de Estoque</h2>
+    <a href="/relatorios" class="btn btn-secondary mb-3"> Voltar para Relatórios</a>
 
+    {% if ferramentas_estoque %}
+<div class="d-flex justify-content-end mb-3">
+    <a href="/exportar_estoque_excel" class="btn btn-outline-primary mb-2">🔽 Exportar Excel</a>
+</div>
 
-    {% if ferramentas %}
-    <table class="table table-bordered table-striped">
-        <thead class="table-success">
-            <tr><th>Nome da Ferramenta</th><th>Quantidade em Estoque</th></tr>
+   
+    <table class="table table-bordered table-hover">
+        <thead class="table-info">
+            <tr>
+                <th>Nome da Ferramenta</th>
+                <th>Quantidade</th>
+            </tr>
         </thead>
         <tbody>
-            {% for f in ferramentas %}
+            {% for f in ferramentas_estoque %}
             <tr>
-                <td>{{ f[0] }}</td>
-                <td>{{ f[1] }}</td>
+                <td>{{ f['nome'] }}</td>
+                <td>{{ f['quantidade'] }}</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+
     <div class="mt-3">
-        <a href="/exportar_estoque_excel" class="btn btn-outline-success">📥 Exportar Estoque para Excel</a>
+       
     </div>
     {% else %}
-    <div class="alert alert-warning">Nenhuma ferramenta encontrada em estoque.</div>
+        <div class="alert alert-warning">Nenhuma ferramenta no estoque.</div>
     {% endif %}
 </div>
 </body>

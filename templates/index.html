@@ -4,13 +4,26 @@
     <meta charset="UTF-8">
     <title>Controle de Ferramentas</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .nav-tabs .nav-link {
+            font-size: 16px;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 0;
+        }
+
+        .nav-tabs .nav-link.active {
+            background-color: #0d6efd;
+            color: white;
+            border-radius: 0;
+        }
+    </style>
 </head>
 <body class="bg-light p-4">
 <div class="container">
     <h1 class="mb-4">Controle de Ferramentas</h1>
 
-    <a href="/relatorios" class="btn btn-outline-primary">📊 Ver Relatórios</a>
-
+    <a href="/relatorios" class="btn btn-outline-primary">📊 Relatórios</a>
 
 
     <!-- Formulário de adição -->
@@ -29,49 +42,91 @@
         <div class="col-md-12"><button class="btn btn-primary w-100 mt-2">Adicionar Ferramenta</button></div>
     </form>
 
-    <!-- Ferramentas em Estoque -->
-    <h4>🔹 Ferramentas em Estoque</h4>
-    <table class="table table-striped">
-        <thead class="table-success">
-            <tr><th>Nome</th><th>Quantidade</th><th>Ações</th></tr>
-        </thead>
-        <tbody>
-            {% for f in ferramentas_estoque %}
-            <tr>
-                <td>{{ f.nome }}</td>
-                <td>{{ f.quantidade }}</td>
-                <td>
-                    <a href="/editar/{{ f.id }}" class="btn btn-warning btn-sm">Editar</a>
-                    <a href="/deletar/{{ f.id }}" class="btn btn-danger btn-sm">Excluir</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <!-- Abas -->
+    <ul class="nav nav-tabs mb-3 justify-content-center" id="abasFerramentas" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="aba-estoque-tab" data-bs-toggle="tab" data-bs-target="#aba-estoque" type="button" role="tab">🔹 Ferramentas em Estoque</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="aba-uso-tab" data-bs-toggle="tab" data-bs-target="#aba-uso" type="button" role="tab">🔸 Ferramentas em Uso</button>
+        </li>
+    </ul>
 
-    <!-- Ferramentas em Uso -->
-    <h4 class="mt-5">🔸 Ferramentas em Uso</h4>
-    <table class="table table-striped">
-        <thead class="table-warning">
-            <tr><th>Nome</th><th>Qtd</th><th>Projeto</th><th>Técnico</th><th>IDGEO</th><th>Ações</th></tr>
-        </thead>
-        <tbody>
-            {% for f in ferramentas_uso %}
-            <tr>
-                <td>{{ f.nome }}</td>
-                <td>{{ f.quantidade }}</td>
-                <td>{{ f.local }}</td>
-                <td>{{ f.tecnico }}</td>
-                <td>{{ f.idgeo }}</td>
-                <td>
-                    <a href="/devolver/{{ f.id }}" class="btn btn-success btn-sm">Devolver</a>
-                    <a href="/editar/{{ f.id }}" class="btn btn-warning btn-sm">Editar</a>
-                    <a href="/deletar/{{ f.id }}" class="btn btn-danger btn-sm">Excluir</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <!-- Conteúdo das abas -->
+    <div class="tab-content" id="conteudoAbas">
+        <!-- Aba Estoque -->
+        <div class="tab-pane fade show active" id="aba-estoque" role="tabpanel">
+            <input type="text" class="form-control mb-3" id="buscaEstoque" placeholder="🔍 Buscar ferramenta no estoque..." onkeyup="filtrarTabela('buscaEstoque', 'tabelaEstoque')">
+            <table class="table table-striped" id="tabelaEstoque">
+                <thead class="table-success">
+                    <tr><th>Nome</th><th>Quantidade</th><th>Ações</th></tr>
+                </thead>
+                <tbody>
+                    {% for f in ferramentas_estoque %}
+                    <tr>
+                        <td>{{ f.nome }}</td>
+                        <td>{{ f.quantidade }}</td>
+                        <td>
+                            <a href="/editar/{{ f.id }}" class="btn btn-warning btn-sm">Editar</a>
+                            <a href="/deletar/{{ f.id }}" class="btn btn-danger btn-sm">Excluir</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Aba Em Uso -->
+        <div class="tab-pane fade" id="aba-uso" role="tabpanel">
+            <input type="text" class="form-control mb-3" id="buscaUso" placeholder="🔍 Buscar ferramenta em uso..." onkeyup="filtrarTabela('buscaUso', 'tabelaUso')">
+            <table class="table table-striped" id="tabelaUso">
+                <thead class="table-warning">
+                    <tr><th>Nome</th><th>Qtd</th><th>Projeto</th><th>Técnico</th><th>IDGEO</th><th>Ações</th></tr>
+                </thead>
+                <tbody>
+                    {% for f in ferramentas_uso %}
+                    <tr>
+                        <td>{{ f.nome }}</td>
+                        <td>{{ f.quantidade }}</td>
+                        <td>{{ f.local }}</td>
+                        <td>{{ f.tecnico }}</td>
+                        <td>{{ f.idgeo }}</td>
+                        <td>
+                            <a href="/devolver/{{ f.id }}" class="btn btn-success btn-sm">Devolver</a>
+                            <a href="/editar/{{ f.id }}" class="btn btn-warning btn-sm">Editar</a>
+                            <a href="/deletar/{{ f.id }}" class="btn btn-danger btn-sm">Excluir</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function filtrarTabela(inputId, tabelaId) {
+    var input = document.getElementById(inputId);
+    var filtro = input.value.toLowerCase();
+    var tabela = document.getElementById(tabelaId);
+    var linhas = tabela.getElementsByTagName("tr");
+
+    for (var i = 1; i < linhas.length; i++) {
+        var colunas = linhas[i].getElementsByTagName("td");
+        var achou = false;
+
+        for (var j = 0; j < colunas.length; j++) {
+            if (colunas[j].innerText.toLowerCase().includes(filtro)) {
+                achou = true;
+                break;
+            }
+        }
+
+        linhas[i].style.display = achou ? "" : "none";
+    }
+}
+</script>
 </body>
 </html>
