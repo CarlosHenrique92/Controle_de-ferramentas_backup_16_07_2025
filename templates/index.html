@@ -38,7 +38,7 @@
         </div>
         <div class="col-md-3"><input name="local" class="form-control" placeholder="Projeto / Local"></div>
         <div class="col-md-2"><input name="tecnico" class="form-control" placeholder="Técnico"></div>
-        <div class="col-md-1"><input name="quantidade" type="number" class="form-control" placeholder="Qtd" min="1" required></div>
+        <div class="col-md-1"><input name="quantidade" type="number" class="form-control" placeholder="Qtd" min="0" required></div>
         <div class="col-md-1"><input name="idgeo" class="form-control" placeholder="IDGEO"></div>
         <div class="col-md-12"><button class="btn btn-primary w-100 mt-2">Adicionar Ferramenta</button></div>
     </form>
@@ -65,13 +65,14 @@
                 <tbody>
                     {% for f in ferramentas_estoque %}
                     <tr>
-                        <td>{{ f.nome }}</td>
-                        <td>{{ f.quantidade }}</td>
+                        <td class="{% if f.quantidade == 0 %}text-danger fw-bold{% endif %}">{{ f.nome }}</td>
+                        <td class="{% if f.quantidade == 0 %}text-danger fw-bold{% endif %}">{{ f.quantidade }}</td>
                         <td>
                             <a href="/editar/{{ f.id }}" class="btn btn-warning btn-sm">Editar</a>
                             <a href="/deletar/{{ f.id }}" class="btn btn-danger btn-sm">Excluir</a>
                         </td>
                     </tr>
+
                     {% endfor %}
                 </tbody>
             </table>

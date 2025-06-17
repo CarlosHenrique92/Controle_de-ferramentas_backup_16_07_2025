@@ -47,10 +47,10 @@ def adicionar():
         ferramenta_estoque = conn.execute('SELECT * FROM ferramentas WHERE nome = ? AND status = "estoque"', (nome,)).fetchone()
         if ferramenta_estoque:
             nova_qtd_estoque = ferramenta_estoque['quantidade'] - quantidade
-            if nova_qtd_estoque <= 0:
-                conn.execute('DELETE FROM ferramentas WHERE id = ?', (ferramenta_estoque['id'],))
-            else:
-                conn.execute('UPDATE ferramentas SET quantidade = ? WHERE id = ?', (nova_qtd_estoque, ferramenta_estoque['id']))
+            if ferramenta_estoque:
+                nova_qtd_estoque = ferramenta_estoque['quantidade'] - quantidade
+            # Mesmo que fique 0, mantemos no banco
+            conn.execute('UPDATE ferramentas SET quantidade = ? WHERE id = ?', (nova_qtd_estoque, ferramenta_estoque['id']))
 
     conn.commit()
     conn.close()
@@ -62,23 +62,87 @@ def editar(id):
     ferramenta = conn.execute('SELECT * FROM ferramentas WHERE id = ?', (id,)).fetchone()
 
     if request.method == 'POST':
-        nome = request.form['nome']
-        status = request.form['status']
+        nome = ferramenta['nome']  # mantém o nome original
+        status_anterior = ferramenta['status']
+        quantidade_antiga = ferramenta['quantidade']
+
+        novo_status = request.form['status']
+        quantidade_nova = int(request.form['quantidade'])
         local = request.form['local']
         tecnico = request.form['tecnico']
-        quantidade = int(request.form['quantidade'])
         idgeo = request.form['idgeo']
 
-        conn.execute(
-            'UPDATE ferramentas SET nome = ?, status = ?, local = ?, tecnico = ?, quantidade = ?, idgeo = ? WHERE id = ?',
-            (nome, status, local, tecnico, quantidade, idgeo, id)
-        )
+        if status_anterior == 'estoque' and novo_status == 'uso':
+            # Atualiza ou cria nova linha para o uso
+            existente_uso = conn.execute('''
+                SELECT * FROM ferramentas 
+                WHERE nome = ? AND status = 'uso' AND local = ? AND tecnico = ? AND idgeo = ?
+            ''', (nome, local, tecnico, idgeo)).fetchone()
+
+            if existente_uso:
+                nova_qtd = existente_uso['quantidade'] + quantidade_nova
+                conn.execute('UPDATE ferramentas SET quantidade = ? WHERE id = ?', (nova_qtd, existente_uso['id']))
+            else:
+                conn.execute('''
+                    INSERT INTO ferramentas (nome, status, local, tecnico, quantidade, idgeo)
+                    VALUES (?, 'uso', ?, ?, ?, ?)
+                ''', (nome, local, tecnico, quantidade_nova, idgeo))
+
+            # Atualiza estoque restante (não apaga mais)
+            restante = quantidade_antiga - quantidade_nova
+            conn.execute('UPDATE ferramentas SET quantidade = ? WHERE id = ?', (restante, id))
+
+        elif status_anterior == 'uso' and novo_status == 'estoque':
+            # Atualiza ou soma no estoque
+            existente_estoque = conn.execute('''
+                SELECT * FROM ferramentas 
+                WHERE nome = ? AND status = 'estoque'
+            ''', (nome,)).fetchone()
+
+            if existente_estoque:
+                nova_qtd = existente_estoque['quantidade'] + quantidade_nova
+                conn.execute('UPDATE ferramentas SET quantidade = ? WHERE id = ?', (nova_qtd, existente_estoque['id']))
+                conn.execute('DELETE FROM ferramentas WHERE id = ?', (id,))
+            else:
+                conn.execute('''
+                    UPDATE ferramentas
+                    SET status = 'estoque', local = '', tecnico = '', idgeo = ''
+                    WHERE id = ?
+                ''', (id,))
+
+        elif status_anterior == 'uso' and novo_status == 'uso':
+            # Atualiza para novo técnico/projeto sem sobrescrever a anterior
+            existente_uso = conn.execute('''
+                SELECT * FROM ferramentas 
+                WHERE nome = ? AND status = 'uso' AND local = ? AND tecnico = ? AND idgeo = ?
+            ''', (nome, local, tecnico, idgeo)).fetchone()
+
+            if existente_uso:
+                nova_qtd = existente_uso['quantidade'] + quantidade_nova
+                conn.execute('UPDATE ferramentas SET quantidade = ? WHERE id = ?', (nova_qtd, existente_uso['id']))
+                conn.execute('DELETE FROM ferramentas WHERE id = ?', (id,))
+            else:
+                conn.execute('''
+                    UPDATE ferramentas
+                    SET local = ?, tecnico = ?, idgeo = ?, quantidade = ?
+                    WHERE id = ?
+                ''', (local, tecnico, idgeo, quantidade_nova, id))
+
+        else:
+            # Caso esteja apenas editando algo no estoque sem mudar o status
+            conn.execute('''
+                UPDATE ferramentas
+                SET quantidade = ?, local = ?, tecnico = ?, idgeo = ?
+                WHERE id = ?
+            ''', (quantidade_nova, local, tecnico, idgeo, id))
+
         conn.commit()
         conn.close()
         return redirect('/')
 
     conn.close()
     return render_template('editar.html', ferramenta=ferramenta)
+
 
 @app.route('/deletar/<int:id>')
 def deletar(id):
@@ -110,9 +174,11 @@ def devolver(id):
 def relatorios():
     conn = get_db_connection()
 
+    # Recebe os filtros da URL (GET)
     ferramenta = request.args.get('ferramenta', '').lower()
     tecnico = request.args.get('tecnico', '').lower()
     projeto = request.args.get('projeto', '').lower()
+    idgeo = request.args.get('idgeo', '').lower()
 
     query = """
         SELECT nome, quantidade, status, local, tecnico, idgeo
@@ -130,12 +196,16 @@ def relatorios():
     if projeto:
         query += " AND LOWER(local) LIKE ?"
         params.append(f"%{projeto}%")
+    if idgeo:
+        query += " AND LOWER(idgeo) LIKE ?"
+        params.append(f"%{idgeo}%")
 
     ferramentas = conn.execute(query, params).fetchall()
 
     nomes_ferramentas = [row['nome'] for row in conn.execute("SELECT DISTINCT nome FROM ferramentas WHERE status = 'uso'")]
     tecnicos = [row['tecnico'] for row in conn.execute("SELECT DISTINCT tecnico FROM ferramentas WHERE status = 'uso' AND tecnico != ''")]
     locais = [row['local'] for row in conn.execute("SELECT DISTINCT local FROM ferramentas WHERE status = 'uso' AND local != ''")]
+    idgeos = [row['idgeo'] for row in conn.execute("SELECT DISTINCT idgeo FROM ferramentas WHERE status = 'uso' AND idgeo != ''")]
 
     conn.close()
 
@@ -144,8 +214,10 @@ def relatorios():
         ferramentas=ferramentas,
         nomes_ferramentas=nomes_ferramentas,
         tecnicos=tecnicos,
-        locais=locais
+        locais=locais,
+        idgeos=idgeos
     )
+
 
 @app.route('/relatorio_estoque', methods=['GET', 'POST'])
 def relatorio_estoque():
@@ -170,31 +242,57 @@ def relatorio_estoque():
 
     return render_template('relatorio_estoque.html', ferramentas_estoque=ferramentas_estoque, nomes=nomes)
 
-@app.route('/exportar_estoque_excel')
-def exportar_estoque_excel():
+@app.route('/exportar_excel')
+def exportar_excel():
+    ferramenta = request.args.get('ferramenta', '').lower()
+    tecnico = request.args.get('tecnico', '').lower()
+    projeto = request.args.get('projeto', '').lower()
+    idgeo = request.args.get('idgeo', '').lower()
+
+    query = """
+        SELECT nome, quantidade, status, local, tecnico, idgeo
+        FROM ferramentas
+        WHERE status = 'uso'
+    """
+    params = []
+
+    if ferramenta:
+        query += " AND LOWER(nome) LIKE ?"
+        params.append(f"%{ferramenta}%")
+    if tecnico:
+        query += " AND LOWER(tecnico) LIKE ?"
+        params.append(f"%{tecnico}%")
+    if projeto:
+        query += " AND LOWER(local) LIKE ?"
+        params.append(f"%{projeto}%")
+    if idgeo:
+        query += " AND LOWER(idgeo) LIKE ?"
+        params.append(f"%{idgeo}%")
+
     conn = sqlite3.connect('ferramentas.db')
     cursor = conn.cursor()
-    cursor.execute("SELECT nome, quantidade FROM ferramentas WHERE status = 'estoque'")
-    dados = cursor.fetchall()
+    dados = cursor.execute(query, params).fetchall()
     conn.close()
 
     if not dados:
         return "Nenhum dado encontrado para exportar."
 
+    import openpyxl
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.append(["Nome da Ferramenta", "Quantidade"])
+    ws.append(["Nome", "Quantidade", "Status", "Projeto", "Técnico", "IDGEO"])
     for linha in dados:
         ws.append(linha)
 
-    nome_arquivo = "relatorio_estoque.xlsx"
+    nome_arquivo = "relatorio_projetos.xlsx"
     wb.save(nome_arquivo)
 
+    from flask import send_file
     return send_file(nome_arquivo, as_attachment=True)
 
-if __name__ == '__main__':
-    app.run(debug=True)
 
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0')
 # git add .
-# git commit -m "Atualizamos aceitar zero unidades e deixar em vermelho"
+# git commit -m "Programa funcional com o basico rodando e sem erros"
 # git push

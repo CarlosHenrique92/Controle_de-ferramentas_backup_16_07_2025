@@ -1,4 +1,4 @@
-<<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
@@ -20,6 +20,7 @@
                     <input type="hidden" name="ferramenta" value="{{ request.args.get('ferramenta', '') }}">
                     <input type="hidden" name="tecnico" value="{{ request.args.get('tecnico', '') }}">
                     <input type="hidden" name="projeto" value="{{ request.args.get('projeto', '') }}">
+                    <input type="hidden" name="idgeo" value="{{ request.args.get('idgeo', '') }}">
                     <button type="submit" class="btn btn-outline-primary mb-2">🔽 Exportar filtro atual para Excel</button>
                 </form>
             </div>
@@ -27,27 +28,35 @@
 
         <!-- Formulário de Filtro -->
         <form method="GET" class="row g-2 mb-4">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <select name="ferramenta" class="form-select">
                     <option value="">-- Filtrar por Ferramenta --</option>
                     {% for nome in nomes_ferramentas %}
-                        <option value="{{ nome }}" {% if request.args.get('ferramenta') == nome %}selected{% endif %}>{{ nome }}</option>
+                    <option value="{{ nome }}" {% if request.args.get('ferramenta') == nome %}selected{% endif %}>{{ nome }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <select name="tecnico" class="form-select">
                     <option value="">-- Filtrar por Técnico --</option>
                     {% for tecnico in tecnicos %}
-                        <option value="{{ tecnico }}" {% if request.args.get('tecnico') == tecnico %}selected{% endif %}>{{ tecnico }}</option>
+                    <option value="{{ tecnico }}" {% if request.args.get('tecnico') == tecnico %}selected{% endif %}>{{ tecnico }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <select name="projeto" class="form-select">
                     <option value="">-- Filtrar por Projeto --</option>
                     {% for projeto in locais %}
-                        <option value="{{ projeto }}" {% if request.args.get('projeto') == projeto %}selected{% endif %}>{{ projeto }}</option>
+                    <option value="{{ projeto }}" {% if request.args.get('projeto') == projeto %}selected{% endif %}>{{ projeto }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select name="idgeo" class="form-select">
+                    <option value="">-- Filtrar por IDGEO --</option>
+                    {% for idgeo in idgeos %}
+                    <option value="{{ idgeo }}" {% if request.args.get('idgeo') == idgeo %}selected{% endif %}>{{ idgeo }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -83,7 +92,7 @@
             </tbody>
         </table>
         {% else %}
-            <div class="alert alert-warning">Nenhum resultado encontrado para o filtro atual.</div>
+        <div class="alert alert-warning">Nenhum resultado encontrado para o filtro atual.</div>
         {% endif %}
     </div>
 </body>
