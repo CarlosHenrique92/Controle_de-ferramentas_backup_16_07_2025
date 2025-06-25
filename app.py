@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, send_file
 import sqlite3
 import openpyxl
+import os
 
 app = Flask(__name__)
 
@@ -290,9 +291,47 @@ def exportar_excel():
     from flask import send_file
     return send_file(nome_arquivo, as_attachment=True)
 
+@app.route('/exportar_estoque')
+def exportar_estoque():
+    import os
+    from flask import send_file
+
+    # Conexão com o banco
+    conn = get_db_connection()
+    ferramentas = conn.execute('SELECT * FROM ferramentas WHERE status = "estoque"').fetchall()
+    conn.close()
+
+    # Cria a planilha Excel
+    import openpyxl
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Estoque'
+
+    # Cabeçalhos
+    ws.append(['ID', 'Nome', 'Quantidade', 'Local', 'Técnico', 'IDGEO'])
+
+    # Linhas de dados
+    for f in ferramentas:
+        ws.append([
+            f['id'],
+            f['nome'],
+            f['quantidade'],
+            f['local'],
+            f['tecnico'],
+            f['idgeo']
+        ])
+
+    # Caminho seguro para salvar no PythonAnywhere
+    caminho_arquivo = os.path.join(os.path.expanduser("~"), "relatorio_estoque.xlsx")
+    wb.save(caminho_arquivo)
+
+    # Retorna o arquivo para download
+    return send_file(caminho_arquivo, as_attachment=True)
+
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
 # git add .
-# git commit -m "Programa funcional com o basico rodando e sem erros"
+# git commit -m "Programa funcionando e com servidor"
 # git push
