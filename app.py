@@ -1,16 +1,124 @@
-from flask import Flask, render_template, request, redirect, send_file, session, url_for
+from flask import Flask, render_template, request, redirect, send_file, session, url_for, session
+from datetime import datetime
 import sqlite3
 import openpyxl
 import os
+import smtplib
+from email.message import EmailMessage
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from fpdf import FPDF
+import unicodedata
 
 app = Flask(__name__)
-app.secret_key = 'chave_secreta_segura'
+app.secret_key = 'chave_secreta_segura' #Nescesário para uso da sessão
+
+#---------------GERAR PDF DE SOLICITAÇÃO DE FERRAMENTA----------------
+def get_db_connection():
+    conn = sqlite3.connect('ferramentas.db')
+    conn.row_factory = sqlite3.Row
+    return conn
+
+# --- Função para gerar PDF (deixe essa definida em outro lugar no projeto real) ---
+def gerar_pdf_solicitacao(dados, ferramentas, caminho_pdf):
+    
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    pdf.cell(200, 10, txt="Requisição de Ferramentas", ln=True, align='C')
+    pdf.ln()
+
+    # Cabeçalho com dados principais
+    pdf.set_font("Arial", size=12)
+    pdf.cell(0, 10, f"Nome da Requisição: {dados['nome_requisicao']}", ln=True)
+    pdf.cell(0, 10, f"Responsável: {dados['responsavel']}", ln=True)
+    pdf.cell(0, 10, f"Projeto/Local: {dados['local']}", ln=True)
+    pdf.cell(0, 10, f"Técnico: {dados['tecnico']}", ln=True)
+    pdf.cell(0, 10, f"IDGEO: {dados['idgeo']}", ln=True)
+    pdf.cell(0, 10, f"Data de Envio: {dados['data_envio']}", ln=True)
+    pdf.cell(0, 10, f"Modalidade de Envio: {dados.get('modalidade_envio', 'Não especificada')}", ln=True)
+    pdf.cell(0, 10, f"Data da Solicitação: {dados['data_solicitacao']}", ln=True)
+
+
+    pdf.ln()
+    pdf.cell(200, 10, txt="Ferramentas:", ln=True)
+    for f in ferramentas:
+        pdf.cell(200, 10, txt=f"- {f['nome']}: {f['quantidade']}", ln=True)
+
+    pdf.output(caminho_pdf)
 
 # -------------------- CONEXÃO --------------------
 def get_db_connection():
     conn = sqlite3.connect('ferramentas.db')
     conn.row_factory = sqlite3.Row
     return conn
+
+def enviar_email_com_anexo(dados, caminho_pdf):
+    import smtplib
+    from email.message import EmailMessage
+
+    msg = EmailMessage()
+    msg['Subject'] = f"Nova Requisição: {dados['nome_requisicao']}"
+    msg['From'] = 'almoxarifado@geoambiente.eng.br'
+    msg['To'] = 'almoxarifado@geoambiente.eng.br'
+
+    corpo = f"""
+Nova solicitação de ferramentas!
+
+📄 Requisição: {dados['nome_requisicao']}
+📦 Data de envio: {dados['data_envio']}
+👤 Responsável: {dados['responsavel']}
+🏗️ Local/Projeto: {dados['local']}
+🔧 Técnico: {dados['tecnico']}
+🆔 IDGEO: {dados['idgeo']}
+🚚 Modalidade de envio: {dados.get('modalidade_envio', 'não especificada')}
+📅 Solicitado em: {datetime.now().strftime('%d/%m/%Y às %H:%M')}
+
+🔩 Ferramentas:
+"""
+    for f in dados['ferramentas']:
+        corpo += f"- {f['nome']}: {f['quantidade']}\n"
+
+    msg.set_content(corpo)
+
+    with open(caminho_pdf, 'rb') as f:
+        msg.add_attachment(f.read(), maintype='application', subtype='pdf', filename=os.path.basename(caminho_pdf))
+
+    try:
+        with smtplib.SMTP('smtp.gmail.com', 587) as smtp:
+            smtp.starttls()
+            smtp.login('almoxarifado@geoambiente.eng.br', 'swkb kwmk tjjm ozio')  # senha de app
+            smtp.send_message(msg)
+            print("📨 E-mail enviado com sucesso!")
+    except Exception as e:
+        print("❌ Erro ao enviar e-mail:", e)
+
+
+# Cria a tabela 'requisicoes' caso ainda não exista
+def criar_tabela_requisicoes():
+    conn = sqlite3.connect('ferramentas.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS requisicoes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome_requisicao TEXT,
+            data_solicitacao TEXT,
+            data_envio TEXT,
+            responsavel TEXT,
+            local TEXT,
+            tecnico TEXT,
+            idgeo TEXT,
+            ferramentas TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+# Chama a função para garantir que a tabela existe
+criar_tabela_requisicoes()
+
+
+
 
 # -------------------- LOGIN --------------------
 @app.route('/login', methods=['GET', 'POST'])
@@ -283,9 +391,152 @@ def exportar_estoque():
     wb.save(caminho_arquivo)
     return send_file(caminho_arquivo, as_attachment=True)
 
+#--------------CONFIRMAR RELATORIO------------------------------------
+@app.route('/confirmar_solicitacao', methods=['POST'])
+def confirmar_solicitacao():
+    ferramentas_selecionadas = request.form.getlist('ferramentas[]')
+    dados = {
+        'nome_requisicao': request.form.get('nome_requisicao'),
+        'responsavel': request.form.get('responsavel'),
+        'local': request.form.get('local'),
+        'tecnico': request.form.get('tecnico'),
+        'idgeo': request.form.get('idgeo'),
+        'data_envio': request.form.get('data_envio'),
+        'modalidade_envio': request.form.get('modalidade_envio'),
+        'ferramentas': []
+    }
+
+    for nome in ferramentas_selecionadas:
+        qtd = request.form.get(f'quantidade_{nome}', '')
+        dados['ferramentas'].append({
+            'nome': nome,
+            'quantidade': qtd
+        })
+
+    session['dados_requisicao'] = dados
+    return render_template('confirmar_solicitacao.html', dados=dados)
+
+# --- Rota final para processar a requisição ---
+@app.route('/solicitar', methods=['GET', 'POST'])
+def solicitar_ferramentas():
+    conn = get_db_connection()
+
+    if request.method == 'POST':
+        # Se for retorno da tela de confirmação (botão Voltar)
+        if request.form.get('confirmacao_final') == 'true':
+            ferramentas_form = []
+            ferramentas_disponiveis = conn.execute(
+                'SELECT nome, quantidade FROM ferramentas WHERE status = "estoque" AND quantidade > 0'
+            ).fetchall()
+
+            ferramentas_selecionadas = request.form.getlist('ferramentas[]')
+
+            for f in ferramentas_disponiveis:
+                nome = f['nome']
+                ferramentas_form.append({
+                    'nome': nome,
+                    'quantidade': f['quantidade'],
+                    'selecionada': nome in ferramentas_selecionadas,
+                    'qtd_solicitada': request.form.get(f'quantidade_' + nome, '')
+                })
+
+            conn.close()
+            return render_template('solicitar.html', ferramentas=ferramentas_form,
+                                   nome_requisicao=request.form.get('nome_requisicao'),
+                                   responsavel=request.form.get('responsavel'),
+                                   local=request.form.get('local'),
+                                   tecnico=request.form.get('tecnico'),
+                                   idgeo=request.form.get('idgeo'),
+                                   data_envio=request.form.get('data_envio'),
+                                   modalidade_envio=request.form.get('modalidade_envio'))
+
+        # Processa a confirmação final e envia o e-mail
+        if request.form.get('confirmado') == 'true':
+            data_envio_raw = request.form.get('data_envio')  # exemplo: '2025-07-31'
+            data_envio_formatada = datetime.strptime(data_envio_raw, '%Y-%m-%d').strftime('%d/%m/%Y')
+            ferramentas_selecionadas = request.form.getlist('ferramentas[]')
+            dados = {
+                'nome_requisicao': request.form.get('nome_requisicao'),
+                'responsavel': request.form.get('responsavel'),
+                'local': request.form.get('local'),
+                'tecnico': request.form.get('tecnico'),
+                'idgeo': request.form.get('idgeo'),
+                'data_envio':data_envio_formatada,
+                'modalidade_envio': request.form.get('modalidade_envio'),
+                'ferramentas': []
+            }
+
+            for nome in ferramentas_selecionadas:
+                qtd = request.form.get(f'quantidade_{nome}', '1')
+                dados['ferramentas'].append({'nome': nome, 'quantidade': qtd})
+
+            data_solicitacao = datetime.now().strftime('%d/%m/%Y às %H:%M')
+            dados['data_solicitacao'] = data_solicitacao
+            ferramentas_str = ", ".join([f"{f['nome']} ({f['quantidade']})" for f in dados['ferramentas']])
+            conn.execute('''
+                INSERT INTO requisicoes (nome_requisicao, data_solicitacao, data_envio, responsavel, local, tecnico, idgeo, ferramentas, modalidade_envio)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (dados['nome_requisicao'], data_solicitacao, dados['data_envio'], dados['responsavel'],
+                  dados['local'], dados['tecnico'], dados['idgeo'], ferramentas_str, dados['modalidade_envio']))
+
+            # Atualizar estoque
+            for f in dados['ferramentas']:
+                nome = f['nome']
+                quantidade = int(f['quantidade'])
+
+                ferramenta_estoque = conn.execute(
+                    'SELECT * FROM ferramentas WHERE nome = ? AND status = "estoque"', (nome,)
+                ).fetchone()
+
+                if ferramenta_estoque and ferramenta_estoque['quantidade'] >= quantidade:
+                    nova_qtd = ferramenta_estoque['quantidade'] - quantidade
+                    conn.execute('UPDATE ferramentas SET quantidade = ? WHERE id = ?', (nova_qtd, ferramenta_estoque['id']))
+
+                    ferramenta_uso = conn.execute('''
+                        SELECT * FROM ferramentas WHERE nome = ? AND status = "uso" AND local = ? AND tecnico = ? AND idgeo = ?
+                    ''', (nome, dados['local'], dados['tecnico'], dados['idgeo'])).fetchone()
+
+                    if ferramenta_uso:
+                        nova_qtd_uso = ferramenta_uso['quantidade'] + quantidade
+                        conn.execute('UPDATE ferramentas SET quantidade = ? WHERE id = ?', (nova_qtd_uso, ferramenta_uso['id']))
+                    else:
+                        conn.execute('''
+                            INSERT INTO ferramentas (nome, status, local, tecnico, quantidade, idgeo)
+                            VALUES (?, 'uso', ?, ?, ?, ?)
+                        ''', (nome, dados['local'], dados['tecnico'], quantidade, dados['idgeo']))
+
+            # Geração e envio do PDF
+            nome_limpo = unicodedata.normalize('NFKD', dados['nome_requisicao']).encode('ASCII', 'ignore').decode('ASCII')
+            nome_arquivo_pdf = f"requisicao_{nome_limpo.replace(' ', '_')}.pdf"
+            pdf_path = os.path.join('static', nome_arquivo_pdf)
+            gerar_pdf_solicitacao(dados, dados['ferramentas'], pdf_path)
+            enviar_email_com_anexo(dados, pdf_path)
+
+            conn.commit()
+            conn.close()
+
+            return render_template('sucesso.html', nome_pdf=nome_arquivo_pdf)
+
+    # GET padrão: exibe o formulário
+    ferramentas = conn.execute(
+        'SELECT nome, quantidade FROM ferramentas WHERE status = "estoque" AND quantidade > 0'
+    ).fetchall()
+    conn.close()
+    return render_template('solicitar.html', ferramentas=ferramentas)
+
+
+@app.route('/sucesso')
+def sucesso():
+    nome_pdf = request.args.get('pdf')
+    return render_template('sucesso.html', nome_pdf=nome_pdf)
+
+
+
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
 
 #  git add .
-#  git commit -m "Programa funcionando com servidor e senha"
+#  git commit -m "Adicionamos  a função de solicitar ferramentas"
 #  git push
+

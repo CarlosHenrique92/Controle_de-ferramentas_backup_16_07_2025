@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Confirmação de Solicitação</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light p-4">
+<div class="container">
+    <h2 class="mb-4">🔎 Revisar Solicitação</h2>
+
+    <div class="mb-3">
+        <strong>Nome da Requisição:</strong> {{ dados.nome_requisicao }}<br>
+        <strong>Responsável pelo Recebimento:</strong> {{ dados.responsavel }}<br>
+        <strong>Local/Projeto:</strong> {{ dados.local }}<br>
+        <strong>Técnico:</strong> {{ dados.tecnico }}<br>
+        <strong>IDGEO:</strong> {{ dados.idgeo }}<br>
+        <strong>Data para Envio:</strong> {{ dados.data_envio }}<br>
+        <strong>Modalidade de Envio:</strong> {{ dados.modalidade_envio }}<br>
+    </div>
+
+    <h5>📦 Ferramentas Solicitadas:</h5>
+    <table class="table table-bordered table-sm">
+        <thead class="table-light">
+        <tr>
+            <th>Nome</th>
+            <th>Quantidade</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for f in dados.ferramentas %}
+            <tr>
+                <td>{{ f.nome }}</td>
+                <td>{{ f.quantidade }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <form action="/solicitar" method="POST">
+    <!-- Confirmação final: usado para processar a solicitação -->
+    <input type="hidden" name="confirmado" value="true">
+    <input type="hidden" name="nome_requisicao" value="{{ dados.nome_requisicao }}">
+    <input type="hidden" name="responsavel" value="{{ dados.responsavel }}">
+    <input type="hidden" name="local" value="{{ dados.local }}">
+    <input type="hidden" name="tecnico" value="{{ dados.tecnico }}">
+    <input type="hidden" name="idgeo" value="{{ dados.idgeo }}">
+    <input type="hidden" name="data_envio" value="{{ dados.data_envio }}">
+    <input type="hidden" name="modalidade_envio" value="{{ dados.modalidade_envio }}">
+
+    {% for f in dados.ferramentas %}
+        <input type="hidden" name="ferramentas[]" value="{{ f.nome }}">
+        <input type="hidden" name="quantidade_{{ f.nome }}" value="{{ f.quantidade }}">
+    {% endfor %}
+
+    <button type="submit" class="btn btn-success" name="confirmado" value="true">✅ Confirmar e Enviar</button>
+    <button type="submit" class="btn btn-warning ms-2" name="confirmacao_final" value="true">🔙 Voltar e Editar</button>
+</form>
+</div>
+</body>
+</html>
