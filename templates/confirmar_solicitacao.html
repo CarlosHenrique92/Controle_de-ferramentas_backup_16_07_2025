@@ -7,7 +7,10 @@
 </head>
 <body class="bg-light p-4">
 <div class="container">
-    <h2 class="mb-4">🔎 Revisar Solicitação</h2>
+    <div class="text- mb-4">
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo da empresa" style="height: 80px;" class="mb-3">
+    <h2 class="mb-0">Confirmar Solicitação</h2>
+</div>
 
     <div class="mb-3">
         <strong>Nome da Requisição:</strong> {{ dados.nome_requisicao }}<br>
@@ -17,6 +20,7 @@
         <strong>IDGEO:</strong> {{ dados.idgeo }}<br>
         <strong>Data para Envio:</strong> {{ dados.data_envio }}<br>
         <strong>Modalidade de Envio:</strong> {{ dados.modalidade_envio }}<br>
+        <p><strong>Número da Requisição:</strong> {{ numero }}</p>
     </div>
 
     <h5>📦 Ferramentas Solicitadas:</h5>

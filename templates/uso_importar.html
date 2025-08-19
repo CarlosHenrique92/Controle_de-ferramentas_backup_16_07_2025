@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <meta charset="UTF-8">
+    <title>Controle de Ferramentas — Importar Requisição</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .nav-tabs .nav-link {
+            font-size: 16px;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 0;
+        }
+        .nav-tabs .nav-link.active {
+            background-color: #0d6efd;
+            color: white;
+            border-radius: 0;
+        }
+    </style>
+</head>
+<body class="bg-light p-4">
+<div class="container">
+
+    <!-- Logo -->
+    <div class="text- mb-4">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo da Empresa" style="max-height: 100px;">
+    </div>
+
+    <h1 class="mb-3">Controle de Ferramentas</h1>
+
+    <!-- Ações principais (mesmo padrão do index) -->
+    <div class="d-flex mb-3">
+        
+    </div>
+
+    <!-- Mensagens (flash) -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="mb-3">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ 'warning' if category=='warning' else ('danger' if category=='danger' else ('success' if category=='success' else 'info')) }} rounded-1 py-2 px-3 mb-2">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <!-- Card de importação -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h5 class="card-title mb-2">Importar requisição (.docx)</h5>
+            <p class="text-muted mb-3">
+                Envie um arquivo Word no padrão do RP para lançar as ferramentas diretamente em <strong>USO</strong>.
+            </p>
+
+            <form method="POST" enctype="multipart/form-data" class="row g-2 align-items-end">
+                <div class="col-12 col-sm-8 col-md-6">
+                    <label class="form-label">Arquivo (.docx)</label>
+                    <input type="file" name="arquivo" accept=".docx" class="form-control rounded-1" required>
+                </div>
+                <div class="col-12 col-sm-auto">
+                    <button type="submit" class="btn btn-primary rounded-1">
+                        📄 Importar e Lançar
+                    </button>
+                </div>
+                <div class="col-12 col-sm-auto">
+                    <a href="{{ url_for('index') }}#aba-uso" class="btn btn-secondary rounded-1">
+                        ← Voltar
+                    </a>
+                </div>
+            </form>
+
+            <hr class="my-4">
+
+            <div class="small text-muted">
+               
+                </ul>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

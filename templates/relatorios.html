@@ -7,7 +7,11 @@
 </head>
 <body class="bg-light p-4">
     <div class="container">
-        <h2 class="mb-4">📊 Relatórios de Ferramentas em Uso</h2>
+       <div class="d-flex align-items-center mb-4">
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" style="height: 60px; margin-right: 15px;">
+ 
+</div>
+
 
         <!-- Botões de navegação -->
         <div class="mb-3 d-flex justify-content-between flex-wrap">
@@ -76,6 +80,7 @@
                     <th>Projeto</th>
                     <th>Técnico</th>
                     <th>IDGEO</th>
+                    <th>Perfuratriz</th>
                 </tr>
             </thead>
             <tbody>
@@ -87,6 +92,7 @@
                     <td>{{ f[3] or '-' }}</td>
                     <td>{{ f[4] or '-' }}</td>
                     <td>{{ f[5] or '-' }}</td>
+                    <td>{{ f[6] or '-' }}</td>
                 </tr>
                 {% endfor %}
             </tbody>

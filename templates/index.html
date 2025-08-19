@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <meta charset="UTF-8">
     <title>Controle de Ferramentas</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -21,29 +22,32 @@
 </head>
 <body class="bg-light p-4">
 <div class="container">
-    
-    <h1 class="mb-4">Controle de Ferramentas</h1>
+    <div class="text- mb-4">
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo da Empresa" style="max-height: 100px;">
+</div>
+
+
+    <h1 class="mb-3">Controle de Ferramentas</h1>
 
     <div class="d-flex mb-3">
-    <a href="/relatorios" class="btn btn-primary me-2">        📊 Relatórios    </a> 
+    <a href="/relatorios" class="btn btn-primary me-2">        📊 Relatórios    </a>
        <a href="/solicitar" class="btn btn-primary">        ➕ Solicitar Ferramentas    </a>
     </div>
 
-
-
     <!-- Formulário de adição -->
     <form method="POST" action="/adicionar" class="row g-2 mb-4">
-        <div class="col-md-3"><input name="nome" class="form-control" placeholder="Nome da ferramenta" required></div>
+        <div class="col-md-2"><input name="nome" class="form-control" placeholder="Nome da ferramenta" required></div>
         <div class="col-md-2">
             <select name="status" class="form-select" required>
                 <option value="estoque">Estoque</option>
                 <option value="uso">Em uso</option>
             </select>
         </div>
-        <div class="col-md-3"><input name="local" class="form-control" placeholder="Projeto / Local"></div>
+        <div class="col-md-2"><input name="local" class="form-control" placeholder="Projeto / Local"></div>
         <div class="col-md-2"><input name="tecnico" class="form-control" placeholder="Técnico"></div>
         <div class="col-md-1"><input name="quantidade" type="number" class="form-control" placeholder="Qtd" min="0" required></div>
         <div class="col-md-1"><input name="idgeo" class="form-control" placeholder="IDGEO"></div>
+        <div class="col-md-2"><input name="perfuratriz" class="form-control" placeholder="Perfuratriz"></div>
         <div class="col-md-12"><button class="btn btn-primary w-100 mt-2">Adicionar Ferramenta</button></div>
     </form>
 
@@ -82,33 +86,65 @@
             </table>
         </div>
 
-        <!-- Aba Em Uso -->
-        <div class="tab-pane fade" id="aba-uso" role="tabpanel">
-            <input type="text" class="form-control mb-3" id="buscaUso" placeholder="🔍 Buscar ferramenta em uso..." onkeyup="filtrarTabela('buscaUso', 'tabelaUso')">
-            <table class="table table-striped" id="tabelaUso">
-                <thead class="table-warning">
-                    <tr><th>Nome</th><th>Qtd</th><th>Projeto</th><th>Técnico</th><th>IDGEO</th><th>Ações</th></tr>
-                </thead>
-                <tbody>
-                    {% for f in ferramentas_uso %}
-                    <tr>
-                        <td>{{ f.nome }}</td>
-                        <td>{{ f.quantidade }}</td>
-                        <td>{{ f.local }}</td>
-                        <td>{{ f.tecnico }}</td>
-                        <td>{{ f.idgeo }}</td>
-                        <td>
-                            <a href="/devolver/{{ f.id }}" class="btn btn-success btn-sm">Devolver</a>
-                            <a href="/editar/{{ f.id }}" class="btn btn-warning btn-sm">Editar</a>
-                            <a href="/deletar/{{ f.id }}" class="btn btn-danger btn-sm">Excluir</a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+      <!-- Aba Em Uso -->
+<div class="tab-pane fade" id="aba-uso" role="tabpanel">
+  <form method="POST" action="/confirmar_devolucao">
+
+    <!-- Busca -->
+    <div class="mb-2">
+      <input type="text"
+             class="form-control"
+             id="buscaUso"
+             placeholder="🔍 Buscar ferramenta em uso..."
+             onkeyup="filtrarTabela('buscaUso', 'tabelaUso')">
     </div>
+
+    <!-- Botão abaixo da busca -->
+    <div class="mb-3">
+      <a href="{{ url_for('uso_importar') }}"
+         class="btn btn-primary rounded-1 shadow-sm">
+        📄 Importar requisição
+      </a>
+    </div>
+
+    <table class="table table-striped" id="tabelaUso">
+      <thead class="table-warning">
+        <tr>
+          <th></th> <!-- Checkbox -->
+          <th>Nome</th>
+          <th>Qtd</th>
+          <th>Projeto</th>
+          <th>Técnico</th>
+          <th>IDGEO</th>
+          <th>Perfuratriz</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in ferramentas_uso %}
+        <tr>
+          <td><input type="checkbox" name="selecionadas" value="{{ f.id }}"></td>
+          <td>{{ f.nome }}</td>
+          <td>{{ f.quantidade }}</td>
+          <td>{{ f.local }}</td>
+          <td>{{ f.tecnico }}</td>
+          <td>{{ f.idgeo }}</td>
+          <td>{{ f.perfuratriz }}</td>
+          <td>
+            <a href="/devolver/{{ f.id }}" class="btn btn-success btn-sm">Devolver</a>
+            <a href="/editar/{{ f.id }}" class="btn btn-warning btn-sm">Editar</a>
+            <a href="/deletar/{{ f.id }}" class="btn btn-danger btn-sm">Excluir</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <button type="submit" class="btn btn-primary mt-2">Devolver Selecionadas</button>
+  </form>
 </div>
+
+
 
 <!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

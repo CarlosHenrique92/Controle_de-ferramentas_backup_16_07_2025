@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
@@ -7,6 +7,10 @@
 </head>
 <body class="bg-light p-4">
 <div class="container text-center">
+
+    <!-- LOGO CENTRALIZADA -->
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo da empresa" style="height: 80px;" class="mb-4 mt-2">
+
     <h2 class="text-success mb-4">✅ Solicitação enviada com sucesso!</h2>
 
     <p class="lead">O PDF foi gerado e enviado para o almoxarifado.</p>
@@ -20,4 +24,3 @@
 </div>
 </body>
 </html>
-
